@@ -1,7 +1,7 @@
 #!/usr/bin/python
 from gevent import thread
 
-TESTING = False
+TESTING = True
 
 import json
 from binance.client import Client
@@ -35,8 +35,9 @@ profit = float(sys.argv[4])
 side = sys.argv[5]
 
 commision = 0.0005
-assetMajor = symbol[3:]
-assetMinor = symbol[:-3]
+assets = symbol.split('/')
+assetMajor = assets[1]
+assetMinor = assets[0]
 start = "1 Dec, 2017"
 end = "1 feb, 2018"
 interval = Client.KLINE_INTERVAL_1MINUTE
