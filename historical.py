@@ -136,9 +136,14 @@ def get_historical_klines(symbol, interval, start_str, end_str=None):
     return output_data
 
 
-"""""
+start = '1 Dec, 2017'
+end = '1 jun, 2018'
+symbol = 'ASTBTC'
+interval = '1m'
 
-# open a file with filename including symbol, interval and start and end converted to milliseconds
+klines = get_historical_klines(symbol, interval, start)
+
+'''open a file with filename including symbol, interval and start and end converted to milliseconds'''
 with open(
         "Binance_{}_{}_{}-{}.json".format(
             symbol,
@@ -149,4 +154,3 @@ with open(
         'w'  # set file write mode
 ) as f:
     f.write(json.dumps(klines))
-"""""
