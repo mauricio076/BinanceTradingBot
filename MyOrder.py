@@ -2,6 +2,7 @@
 from gevent import thread
 
 TESTING = False
+ACTIVE = False
 
 import json
 from binance.client import Client
@@ -13,7 +14,8 @@ from bcolors import bcolors
 import websocket
 from threading import Thread
 import asyncio
-#import websockets
+
+# import websockets
 
 # client = Client(api_key, api_secret)
 
@@ -27,7 +29,7 @@ priceFormat = '{:1.8f}'
 
 lastPrice = 0.0
 
-symbol = sys.argv[1]
+symbolOrig = sys.argv[1]
 # risk = float(sys.argv[2])
 qty = float(sys.argv[2])
 loss = float(sys.argv[3])
@@ -35,7 +37,7 @@ profit = float(sys.argv[4])
 side = sys.argv[5]
 
 commision = 0.0005
-assets = symbol.split('/')
+assets = symbolOrig.split('/')
 assetMajor = assets[1]
 assetMinor = assets[0]
 symbol = assetMinor + assetMajor
@@ -46,6 +48,7 @@ interval = Client.KLINE_INTERVAL_1MINUTE
 trading = True
 
 # klines = client.get_historical_klines(symbol, interval, start, end)
+
 
 exchangeInfo = client.get_exchange_info()
 
@@ -77,7 +80,7 @@ qty = max({qty, float(minNotional) / price})
 adj = 0 if round(qty % stepSize) == 0 else 1 - round(qty % stepSize)
 qty = qty + adj
 
-if (side == 'LONG' and assetMajorBalance < qty * price) or (side == 'SHORT' and assetMinorBalance <= qty):
+if ACTIVE and ((side == 'LONG' and assetMajorBalance < qty * price) or (side == 'SHORT' and assetMinorBalance <= qty)):
     print('not enough balance')
     exit(1)
 
@@ -89,20 +92,20 @@ elif side == 'SHORT':
     lossPrice = round(price * (1 + loss), 8)
     profitPrice = round(price * (1 - profit), 8)
 
-print(bcolors.BOLD + '{:1.7f}{}  {:1.7f}{}'.format(assetMajorBalance, assetMajor, assetMinorBalance,
+print(bcolors.BOLD + '{:1.8f}{}  {:1.8f}{}'.format(assetMajorBalance, assetMajor, assetMinorBalance,
                                                    assetMinor) + bcolors.ENDC)
-print(side + ' Price:{:1.7f} Loss:{:1.7f} Profit:{:1.7f}'.format(price, lossPrice, profitPrice))
+print(side + ' Price:{:1.8f} Loss:{:1.8f} Profit:{:1.8f}'.format(price, lossPrice, profitPrice))
 
 MyPosition = Position(symbol, price, qty, lossPrice, profitPrice)
 
 order = {}
-if TESTING:
+if TESTING or not ACTIVE:
     order = client.create_test_order(symbol=MyPosition.symbol,
                                      side=Client.SIDE_BUY if side == 'LONG' else Client.SIDE_SELL,
                                      type=Client.ORDER_TYPE_LIMIT,
                                      timeInForce=Client.TIME_IN_FORCE_GTC,
                                      quantity=MyPosition.entryQty,
-                                     price='{:1.7f}'.format(MyPosition.entryPrice)
+                                     price='{:1.8f}'.format(MyPosition.entryPrice)
                                      )
 else:
     order = client.create_order(symbol=MyPosition.symbol,
@@ -110,7 +113,7 @@ else:
                                 type=Client.ORDER_TYPE_LIMIT,
                                 timeInForce=Client.TIME_IN_FORCE_GTC,
                                 quantity=MyPosition.entryQty,
-                                price='{:1.7f}'.format(MyPosition.entryPrice)
+                                price='{:1.8f}'.format(MyPosition.entryPrice)
                                 )
 # orderId = order['orderId']
 print(order)
@@ -129,7 +132,7 @@ def proces_accountInfo(accountInfo):
         elif (asset['a'] == assetMinor):
             assetMinorBalance = float(f)
 
-    print(bcolors.BOLD + '{:1.7f}{}  {:1.7f}{}'.format(assetMajorBalance, assetMajor, assetMinorBalance,
+    print(bcolors.BOLD + '{:1.8f}{}  {:1.8f}{}'.format(assetMajorBalance, assetMajor, assetMinorBalance,
                                                        assetMinor) + bcolors.ENDC)
 
 
@@ -180,10 +183,13 @@ def process_kline(kline):
 
     if closePosition:
         maxbal = 0
+        newSide=side;
         if side == 'SHORT':
             maxbal = assetMajorBalance / close
+            newSide = 'LONG'
         elif side == 'LONG':
             maxbal = assetMinorBalance
+            newSide = 'SHORT'
         qty = min({maxbal, MyPosition.entryQty})
         qty = qty - qty % stepSize
         if TESTING:
@@ -202,6 +208,9 @@ def process_kline(kline):
         if order != {}:
             bm.close()
             reactor.stop()
+            import subprocess as sp
+            process = sp.Popen('MyOrder.py {} {} {} {} {}'.format(symbolOrig, qty, loss, profit, newSide), shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
+            out, err = process.communicate()  # The output and error streams.
 
 
 # start trade websocket
@@ -220,12 +229,6 @@ def process_message(msg):
 # print(msg)
 # do something
 
-
-"""""
-bm = BinanceSocketManager(client)
-bm.start_aggtrade_socket(symbol=symbol, callback=process_message)
-bm.start()
-"""
 
 bm.start_kline_socket(symbol=symbol, callback=process_message)
 bm.start_user_socket(process_message)
