@@ -1,27 +1,22 @@
 #!/usr/bin/python
-from gevent import thread
+
+# USAGE:
+# python MyOrder.py SYMBOL QTY LOSS PROFIT SIDE
+
 
 TESTING = False
-ACTIVE = False
+ACTIVE = True
 
-import json
 from binance.client import Client
 from position import Position
 import sys
 from twisted.internet import reactor
 from binance.websockets import BinanceSocketManager
 from bcolors import bcolors
-import websocket
-from threading import Thread
-import asyncio
+from ClientCfg import cfg
 
-# import websockets
+client = Client(cfg['api_key'], cfg['api_secret'])
 
-# client = Client(api_key, api_secret)
-
-
-client = Client("",
-                "")
 
 bm = BinanceSocketManager(client)
 
@@ -36,7 +31,7 @@ loss = float(sys.argv[3])
 profit = float(sys.argv[4])
 side = sys.argv[5]
 
-commision = 0.0005
+commission = 0.00075
 assets = symbolOrig.split('/')
 assetMajor = assets[1]
 assetMinor = assets[0]
@@ -55,9 +50,9 @@ exchangeInfo = client.get_exchange_info()
 # Lets get the rules of the game
 symbolInfo = client.get_symbol_info(symbol)
 tickSize = symbolInfo['filters'][0]['tickSize']
-minQty = symbolInfo['filters'][1]['minQty']
-minNotional = symbolInfo['filters'][2]['minNotional']
-stepSize = float(symbolInfo['filters'][1]['stepSize'])
+minQty = symbolInfo['filters'][2]['minQty']
+minNotional = symbolInfo['filters'][3]['minNotional']
+stepSize = float(symbolInfo['filters'][2]['stepSize'])
 
 # Lets get our assets free balances
 assetMajorBalance = float(client.get_asset_balance(assetMajor)['free'])

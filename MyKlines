@@ -1,0 +1,11 @@
+from binance.client import Client
+from binance.websockets import BinanceSocketManager
+from ClientCfg import cfg
+
+client = Client(cfg['api_key'], cfg['api_secret'])
+
+bm = BinanceSocketManager(client)
+
+bm.start_kline_socket(symbol=symbol, callback=process_message)
+bm.start_user_socket(process_message)
+bm.start()

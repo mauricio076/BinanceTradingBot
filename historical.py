@@ -56,6 +56,71 @@ def interval_to_milliseconds(interval):
             pass
     return ms
 
+def get_historical_trades(symbol, start_str, end_str=None):
+    # create the Binance client, no need for api key
+    client = Client("ewkjsX03wqPEIgdf4WXmLnVpFF48lEl9OiQhAXAsgmmsztON33uXrZeMqD8lJa6I", "GZY806qVtkjNQWHzRCYyj8PbKtyt6WVfcFaxSBc9rNZU5H26Nlv95e2AiPRVXM44")
+    fromId = ""
+
+    # init our list
+    output_data = []
+
+    # setup the max limit
+    limit = 500
+
+
+    # convert our date strings to milliseconds
+    start_ts = date_to_milliseconds(start_str)
+
+    # if an end time was passed convert it
+    end_ts = None
+    if end_str:
+        end_ts = date_to_milliseconds(end_str)
+
+    idx = 0
+    # it can be difficult to know when a symbol was listed on Binance so allow start time to be before list date
+    symbol_existed = False
+    while True:
+        # fetch the klines from start_ts up to max 500 entries or the end_ts if set
+        if fromId == '':
+            temp_data = client.get_historical_trades(
+                symbol=symbol,
+                limit=limit
+
+            )
+        else:
+            temp_data = client.get_historical_trades(
+                symbol=symbol,
+                limit=limit,
+                fromId=fromId
+            )
+
+        # handle the case where our start date is before the symbol pair listed on Binance
+        if not symbol_existed and len(temp_data):
+            symbol_existed = True
+
+        if symbol_existed:
+            # update our start timestamp using the last value in the array and add the interval timeframe
+            fromId = temp_data[0]['id'] - 500
+
+            # append this loops data to our output data
+            output_data = temp_data + output_data
+
+
+        idx += 1
+        # check if we received less than the required limit and exit the loop
+        if len(temp_data) < limit:
+            # exit the while loop
+            break
+
+        if temp_data[len(temp_data) -1]['time'] < start_ts:
+            break
+
+        # sleep after every 3rd call to be kind to the API
+        if idx % 4 == 0:
+            time.sleep(1)
+
+
+    return output_data
 
 def get_historical_klines(symbol, interval, start_str, end_str=None):
     """Get Historical Klines from Binance
@@ -129,6 +194,9 @@ def get_historical_klines(symbol, interval, start_str, end_str=None):
             # exit the while loop
             break
 
+        if temp_data[0]['time'] < start_ts:
+            break
+
         # sleep after every 3rd call to be kind to the API
         if idx % 4 == 0:
             time.sleep(1)
@@ -137,20 +205,38 @@ def get_historical_klines(symbol, interval, start_str, end_str=None):
 
 
 start = '1 Dec, 2017'
-end = '1 jun, 2018'
+end = '1 jul, 2018'
 symbol = 'ASTBTC'
-interval = '1m'
 
-klines = get_historical_klines(symbol, interval, start)
+intervals = {'1m', '5m', '15m', '30m', '1h', '2h', '6h', '12h', '1d', '1w'}
 
-'''open a file with filename including symbol, interval and start and end converted to milliseconds'''
+
+'''Get historical trades'''
+trades = get_historical_trades(symbol, start, end)
 with open(
-        "Binance_{}_{}_{}-{}.json".format(
+        "Binance_trades_{}_{}-{}.json".format(
             symbol,
-            interval,
             date_to_milliseconds(start),
             date_to_milliseconds(end)
         ),
         'w'  # set file write mode
 ) as f:
     f.write(json.dumps(klines))
+
+
+'''open a file with filename including symbol, interval and start and end converted to milliseconds'''
+'''
+for interval in intervals:
+    print(interval)
+    klines = get_historical_klines(symbol, interval, start)
+    with open(
+            "Binance_{}_{}_{}-{}.json".format(
+                symbol,
+                interval,
+                date_to_milliseconds(start),
+                date_to_milliseconds(end)
+            ),
+            'w'  # set file write mode
+    ) as f:
+        f.write(json.dumps(klines))
+'''
