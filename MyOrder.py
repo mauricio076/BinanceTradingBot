@@ -4,8 +4,8 @@
 # python MyOrder.py SYMBOL QTY LOSS PROFIT SIDE
 
 
-TESTING = False
-ACTIVE = True
+TESTING = True
+ACTIVE = False
 
 from binance.client import Client
 from position import Position
@@ -27,8 +27,8 @@ lastPrice = 0.0
 symbolOrig = sys.argv[1]
 # risk = float(sys.argv[2])
 qty = float(sys.argv[2])
-loss = float(sys.argv[3])
-profit = float(sys.argv[4])
+loss = float(sys.argv[3][:-1]) if sys.argv[3].endswith( '%' ) else float(sys.argv[3])
+profit = float(sys.argv[4][:-1]) if sys.argv[4].endswith( '%' ) else float(sys.argv[4])
 side = sys.argv[5]
 
 commission = 0.00075
@@ -36,11 +36,11 @@ assets = symbolOrig.split('/')
 assetMajor = assets[1]
 assetMinor = assets[0]
 symbol = assetMinor + assetMajor
-start = "1 Dec, 2017"
-end = "1 feb, 2018"
+start = "1 Dec, 2019"
+end = "17 feb, 2020"
 interval = Client.KLINE_INTERVAL_1MINUTE
 
-trading = True
+trading = False
 
 # klines = client.get_historical_klines(symbol, interval, start, end)
 
